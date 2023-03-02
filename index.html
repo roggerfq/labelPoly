@@ -1,0 +1,637 @@
+<html>
+        <head>
+          <title>LabelPoly</title>
+          <script src="https://d3js.org/d3.v4.min.js"></script>
+          <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+          
+
+           <!-- SAVE JSON FILE -->
+           <script src="FileSaver.js"></script> 
+
+          <style>
+		  
+		h1 {
+		  text-align: center;
+		}
+
+		.svg-container {
+		  display: inline-block;
+		  position: relative;
+		  width: 100%;
+		  padding-bottom: 60%;
+		  /* depends on svg ratio, for my zebra height/width = 1.2 so padding-bottom = 50% * 1.2 = 60% */
+		  vertical-align: middle;
+		  /* top | middle | bottom ... do what you want */
+		}
+
+		.my-svg {
+		  /* svg into : object, img or inline */
+		  display: block;
+		  position: absolute;
+		  top: 0;
+		  left: 0;
+		  width: 100%;
+		  /* only required for <img /> */
+		  z-index: 0;
+		}
+
+
+		svg {
+		  border: solid 1px rgba(221, 61, 16, 0.71);
+		}
+
+		.rectangle {
+		  fill: lightblue;
+		  stroke: blue;
+		  stroke-width: 2px;
+		  fill-opacity: 0.5;
+		}
+
+		.rectangle-bind {
+		  fill: none;
+		  stroke: #081c4e;
+		  stroke-width: 1px;
+		  stroke-dasharray: 5;
+		}
+
+		circle {
+		  fill: lightgreen;
+		  stroke: green;
+		  stroke-width: 2px;
+		  fill-opacity: 0.5;
+		}
+
+		.rect-active {
+		  fill: #1578db;
+		}
+
+		.pointC-active {
+		  fill: #FF8F00;
+		}
+
+		.circle-active {
+		  fill: #4CAF50;
+		}
+
+		path {
+		  fill: #ffb7b3;
+		  stroke: #ff4736;
+		  stroke-width: 5px;
+		}
+
+		polygon {
+		  fill: #b6eeff;
+		  fill-opacity: 0.5;
+		  stroke: #0067ff;
+		  stroke-width: 2px;
+		}
+
+		line {
+		  fill: none;
+		  stroke: #cd08ff;
+		  stroke-width: 2px;
+		}
+
+		polyline {
+		  fill: none;
+		  stroke: #563aff;
+		  stroke-width: 2px;
+		}
+
+		circle.handle {
+		  fill: yellow;
+		  stroke: #cb9c0f;
+		  stroke-width: 2px;
+		  cursor: pointer;
+		}
+
+
+          </style>
+		 
+
+        </head>
+        <body>
+        
+             <div class="btn-group">
+                 <input type='file' accept='image/*' onchange='openFile(event)'><br>
+		  <button id='poly'>draw polygon</button>
+		  <label for="poly_name" style="padding-left: 15px;">Polygon name</label>
+                 <input type="text" id="poly_name" name="fname">
+                 <button id='proc' onclick="call_save()">Exportar Json</button>
+	     </div>    
+            <br>
+            <svg></svg>
+
+            
+
+      
+
+            <script type="text/javascript">
+            
+            
+                 /*
+                 G_POLY_SELECTED y G_POLY_SELECTED_ANT son usadas para establecer 
+                 la logica de seleccionar y deseleccionar poligonos
+                 */
+                 var G_POLY_SELECTED = null;
+                 var G_POLY_SELECTED_ANT = null;
+                 var G_N = 0; //Para llevar la cuenta del numero de poligonos creados
+                 var G_DICT = {};
+                 var STR_IMG = null;
+                 var G_NAME_IMG ="template";
+                 
+                           
+                    
+                 d3.select("body").on("keydown", function() {
+   
+                    if(d3.event.key === "Delete"){
+                       if(G_POLY_SELECTED != null){
+                          if(G_POLY_SELECTED.node().nodeName === "polygon"){//por si hay un bug de seleccion
+                             var parent = G_POLY_SELECTED.node().parentNode;
+                             
+                             //removemos key del diccionario
+                             id = d3.select(parent).attr('id');
+                             delete G_DICT[id]
+                             showPolygonName("");
+                             
+                             d3.select(parent).selectAll("*").remove();
+                             G_POLY_SELECTED = null;
+                          }
+                        }
+                    
+                    }
+                    
+                 });
+                 
+                  
+		  d3.select('#poly').on('click', function() {
+		    new Polygon();
+		  });
+
+
+                 //w y h default
+		  var w = 800, h = 600;
+		  //css("background-image", "url("+dataURL+")");  
+		  var svgCanvas = d3.select('body').select('svg')
+		                     .attr("width", w)
+		                     .attr("height", h);
+
+
+                  function showImage(dataURL){
+		          //______________No fue posible hacer esto con D3.js______________
+		          //var dataURL = "https://cdn.wallpapersafari.com/61/32/Hz1pQD.jpg";
+		          //var dataURL = "/home/rogerfigueroa/Documents/test/test_crop_img/img_23.jpeg";
+		          $('svg').css("background-image", "url("+dataURL+")");  
+		          image = new Image();
+		          image.src = dataURL; 
+		          image.onload = function() {
+		           
+		               STR_IMG = image.src;
+		               d3.select('body').select('svg')
+		                                .attr("width", image.width)
+		                                .attr("height", image.height);
+			   }; 
+			   //_______________________________________________________________      
+	           }
+		                     
+		  
+		  //imagen de inicio
+		  showImage("{{url_for('static', filename='black.png')}}");
+		  
+		  var openFile = function(file) {
+		   
+		         //reset this variables
+		             G_POLY_SELECTED = null;
+			     G_POLY_SELECTED_ANT = null;
+			     G_N = 0; //Para llevar la cuenta del numero de poligonos creados
+			     G_DICT = {};
+			     G_DATA_URL = null;
+			     d3.selectAll('g').remove(); //removiendo poligonos
+		         //____________________
+		  
+		  
+			  var input = file.target;
+			  var reader = new FileReader();
+			  reader.onload = function(e){
+			  
+			    G_NAME_IMG = input.files[0].name;
+			   
+			    var dataURL = reader.result;
+			    //var output = document.getElementById('output');
+			    //output.src = dataURL;
+			    showImage(dataURL);
+			  };
+			  reader.readAsDataURL(input.files[0]);
+			  
+			  
+		   };
+		  
+		                     
+							     
+	
+		  function Polygon() {
+
+		    var polyPoints = [];
+		    var gContainer = svgCanvas.append('g').classed("outline", true);
+		    var isDrawing = false;
+		    var isDragging = false;
+		    var linePoint1, linePoint2;
+		    var startPoint;
+		    var bbox;
+		    var boundingRect;
+		    var shape;
+		    var gPoly;
+
+		    var polyDraw = svgCanvas.on("mousedown", setPoints)
+		      .on("mousemove", drawline)
+		      .on("mouseup", decidePoly);
+		      
+		   
+
+		    var dragBehavior = d3.drag().on("drag", alterPolygon);
+		    //var dragPolygon = d3.drag().on("drag", movePolygon(bbox));
+
+		    //On mousedown - setting points for the polygon
+		    function setPoints() {
+
+                     
+                     G_POLY_SELECTED_ANT = G_POLY_SELECTED
+                     G_POLY_SELECTED = null
+                     showPolygonName("");
+                     if(G_POLY_SELECTED_ANT != G_POLY_SELECTED){
+                        d3.select("svg").selectAll("polygon").style("fill", "#b6eeff");
+                     }
+                     
+		      if (isDragging) return;
+		    
+
+		      isDrawing = true;
+
+		      var plod = d3.mouse(this);
+		      linePoint1 = {
+			x: plod[0],
+			y: plod[1]
+		      };
+
+		      polyPoints.push(plod);
+
+		      var circlePoint = gContainer.append("circle")
+			.attr("cx", linePoint1.x)
+			.attr("cy", linePoint1.y)
+			.attr("r", 4)
+			.attr("start-point", true)
+			.classed("handle", true)
+			.style("cursor", "pointer");
+
+
+		      // on setting points if mousedown on a handle
+		      if (d3.event.target.hasAttribute("handle")) {
+			completePolygon()
+		      }
+
+		    }
+
+		    //on mousemove - appending SVG line elements to the points
+		    function drawline() {
+
+		      if (isDrawing) {
+			linePoint2 = d3.mouse(this);
+			gContainer.select('line').remove();
+			gContainer.append('line')
+			  .attr("x1", linePoint1.x)
+			  .attr("y1", linePoint1.y)
+			  .attr("x2", linePoint2[0] - 2) //arbitary value must be substracted due to circle cursor hover not working
+			  .attr("y2", linePoint2[1] - 2); // arbitary values must be tested
+
+		      }
+		    }
+
+		    //On mouseup - Removing the placeholder SVG lines and adding polyline
+		    function decidePoly() {
+
+		      gContainer.select('line').remove();
+		      gContainer.select('polyline').remove();
+
+		      var polyline = gContainer.append('polyline').attr('points', polyPoints);
+
+		      gContainer.selectAll('circle').remove();
+
+		      for (var i = 0; i < polyPoints.length; i++) {
+			var circlePoint = gContainer.append('circle')
+			  .attr('cx', polyPoints[i][0])
+			  .attr('cy', polyPoints[i][1])
+			  .attr('r', 4)
+			  .attr("handle", true)
+			  .classed("handle", true);
+
+		      }
+
+		    }
+
+		    //Called on mousedown if mousedown point if a polygon handle
+		    function completePolygon() {
+		      d3.select('g.outline').remove();
+
+		      gPoly = svgCanvas.append('g')
+			.classed("polygon", true).attr('id', G_N);
+			
+		      //logica de nombres
+		      G_DICT[G_N] = 'unnamed_' + G_N;
+		      G_N = G_N + 1;
+		      
+		      
+
+		      polyPoints.splice(polyPoints.length - 1);
+		      //console.log(polyPoints);
+
+		      polyEl = gPoly.append("polygon")
+			.attr("points", polyPoints);
+
+		      for (var i = 0; i < polyPoints.length; i++) {
+			gPoly.append('circle')
+			  .attr("cx", polyPoints[i][0])
+			  .attr("cy", polyPoints[i][1])
+			  .attr("r", 4)
+			  .call(dragBehavior);
+		      }
+
+		      isDrawing = false;
+		      isDragging = true;
+
+		      bbox = polyEl._groups[0][0].getBBox();
+		      var bbox2 = gPoly._groups[0][0].getBBox();
+
+
+		      bbox.x = 0;
+		      bbox.y = 0;
+		      bbox.width = 50;
+		      bbox.height = 50;
+
+
+		      //            debugger;
+
+		      gPoly.datum({
+			x: 0,
+			y: 0
+		      })
+
+		      //console.log(bbox);
+		      gPoly.attr("transform", function(d) {
+			return "translate(" + d.x + "," + d.y + ")"
+		      });
+		      //          polyEL.attr("transform", "translate(" + 0 + "," + 0 + ")");
+		      //
+		      gPoly.call(d3.drag().on("drag", function(d) {
+		        //console.log('grag poly');
+		        //console.log(d3.select(this));
+		        
+			d3.select(this).attr("transform", "translate(" + (d.x = d3.event.x) + "," + (d.y = d3.event.y) + ")")
+			
+			
+			G_POLY_SELECTED_ANT = G_POLY_SELECTED
+                       G_POLY_SELECTED = d3.select(this).select("polygon")
+                       if(G_POLY_SELECTED_ANT != G_POLY_SELECTED){
+			  d3.select("svg").selectAll("polygon").style("fill", "#b6eeff");
+			  d3.select(this).select("polygon").style('fill', 'red');
+			  var parent = d3.select(this).select("polygon").node().parentNode;
+                         var id = d3.select(parent).attr('id');
+                         showPolygonName(G_DICT[id]);
+			}
+			
+			
+		      }));
+		      
+		     
+		      
+		      //NOTA: importante para seleccionar y deseleccionar
+		      gPoly.on("click", mouseClick);
+                      
+
+		    }
+
+		    //Altering polygon coordinates based on handle drag
+		    function alterPolygon() {
+
+		      if (isDrawing === true) return;
+
+		      var alteredPoints = [];
+		      var selectedP = d3.select(this);
+		      var parentNode = d3.select(this.parentNode);
+
+		      //select only the elements belonging to the parent <g> of the selected circle
+		      var circles = d3.select(this.parentNode).selectAll('circle');
+		      var polygon = d3.select(this.parentNode).select('polygon');
+
+
+		      var pointCX = d3.event.x;
+		      var pointCY = d3.event.y;
+
+		      //rendering selected circle on drag
+		      selectedP.attr("cx", pointCX).attr("cy", pointCY);
+
+		      //loop through the group of circle handles attatched to the polygon and push to new array
+		      for (var i = 0; i < polyPoints.length; i++) {
+
+			var circleCoord = d3.select(circles._groups[0][i]);
+			var pointCoord = [circleCoord.attr("cx"), circleCoord.attr("cy")];
+			alteredPoints[i] = pointCoord;
+
+		      }
+
+		      //re-rendering polygon attributes to fit the handles
+		      polygon.attr("points", alteredPoints);
+
+		      bbox = parentNode._groups[0][0].getBBox();
+		      console.log(bbox);    
+		      
+		   
+		    }
+
+		    function movePolygon() {
+
+                      
+
+		    }
+
+		    function prepareTransform(bboxVal) {
+		    
+		    
+
+		      var originalPosition = {
+			x: bboxVal.x,
+			y: bboxVal.y
+		      };
+
+		      console.log(bboxVal);
+		      console.log(bbox);
+
+		      bbox.x = 0;
+		      bbox.y = 0;
+		      
+		      
+                     return originalPosition;
+                    }
+                    
+                    
+                    
+                    function mouseClick(){
+                    
+                       d3.select("svg").selectAll("polygon").style("fill", "#b6eeff");
+                       poly = d3.select(d3.event.target);
+                       poly.style('fill', 'red');
+                       G_POLY_SELECTED_ANT = G_POLY_SELECTED
+                       G_POLY_SELECTED = poly
+                       
+                     
+                       //console.log(d3.select(d3.event.target));
+                       //console.log(d3.select(d3.event.target).node());
+                       console.log(d3.select(d3.event.target).node().parentNode);
+                       var parent = d3.select(d3.event.target).node().parentNode;
+                       var id = d3.select(parent).attr('id');
+                       showPolygonName(G_DICT[id]);
+                    }
+                    
+                    
+       
+                    
+                 }
+                 
+                 class Point{
+                    constructor(x, y){
+                       this.x = x;
+                       this.y = y;
+                    }
+                 }
+                
+                 class PolygonObj{
+                     constructor(name) {
+                       this.name = name;
+                       this.list_points = [];
+                     }
+                     addPoint(x, y){
+                       var point = new Point(x, y);
+                       this.list_points.push(point);
+                     }
+                 
+                 }
+                
+                 
+                 function showPolygonName(text){
+                 
+                    $("#poly_name:text").val(text);
+                 
+                 }
+                 
+                 
+                 $("#poly_name").on('input',function(e){
+                 
+                     if(G_POLY_SELECTED != null){
+                       var parent = G_POLY_SELECTED.node().parentNode;
+                       var id = d3.select(parent).attr('id');
+                       G_DICT[id] = $("#poly_name:text").val();
+                       showPolygonName(G_DICT[id]);
+                     }
+                     
+                 });
+                 
+                 
+                 function get_list_polygons(){
+                 
+                     list_polygons = [];
+                 
+                     d3.select('body').select('svg').selectAll("polygon").each(function(d,i) { 
+                     
+                            polygon = Polygon(); 
+                     
+                            
+                        
+                            var parent = d3.select(this).node().parentNode;
+                            var id = d3.select(parent).attr('id');
+                            var name = G_DICT[id];
+                            
+                            //creamos objeto poligono
+                            polygon = new PolygonObj(name); 
+                            
+                            str_transform = d3.select(parent).attr('transform');
+                            aux = str_transform.split('(')[1];
+                            aux = aux.split(')')[0];
+                            transform_x = parseInt(aux.split(',')[0]);
+                            transform_y = parseInt(aux.split(',')[1]);
+                            
+                            var points = d3.select(this).attr("points")
+                            list_str_points = points.split(',');
+                            
+                            for(let i = 0; i < list_str_points.length; i+=2) {
+                                x = parseInt(list_str_points[i]);
+                                y = parseInt(list_str_points[i + 1]);
+                                polygon.addPoint(x + transform_x, y + transform_y);
+                            }
+
+                            list_polygons.push(polygon);
+                            console.log(points.split(','));
+                         
+                     
+                     
+                     });
+                     
+
+                     
+                     return list_polygons;
+        
+                 }
+                 
+                 
+                 //Algunas llamadas iniciales
+                 showPolygonName(''); //evitar texto en input al inicio
+                 
+                 
+                 
+                 
+                 //__________NUEVO___________________
+                 
+ 
+ 
+              function call_save(){
+
+                     list_polygons = get_list_polygons();
+                     //AQUI SE GENERA LA PLANTILLA
+                     var fileName = G_NAME_IMG.split(".")[0] + '.json';
+                     //Create a blob of the data
+                     var fileToSave = new Blob([JSON.stringify(list_polygons)], {
+			      type: 'application/json'
+		      });
+		      // Save the file
+		      saveAs(fileToSave, fileName);
+		     
+               }
+                 
+            
+            </script>
+           
+        </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
