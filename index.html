@@ -105,10 +105,18 @@
 		  cursor: pointer;
 		}
 
+
+
+	    .contenedor {
+	      white-space: nowrap;
+	    }
+
 	    .barra {
 	      background-color: #0077B5;
 	      padding: 10px;
+	      height: 30px; /* Ajusta la altura según tus necesidades */
 	      text-align: right;
+	      white-space: nowrap;
 	    }
 	    .boton-linkedin {
 	      background-color: #2867B2;
@@ -120,6 +128,14 @@
 	      font-weight: bold;
 	      float: right;
 	    }
+	    
+	    
+	    .btn-group {
+
+	      float: left;
+
+	    }
+
 
 		  
           </style>
@@ -128,17 +144,23 @@
         </head>
         <body>
 
+         <div class="contenedor">
 	    <div class="barra">
-             <a class="boton-linkedin" href="https://www.linkedin.com/in/roger-figueroa-quintero/?locale=en_US">LinkedIn</a>
-            </div>
-        
+	      
+	             
              <div class="btn-group">
-                 <input type='file' accept='image/*' onchange='openFile(event)'><br>
+                 <input type='file' accept='image/*' onchange='openFile(event)'>
 		  <button id='poly'>draw polygon</button>
 		  <label for="poly_name" style="padding-left: 15px;">Polygon name</label>
                  <input type="text" id="poly_name" name="fname">
                  <button id='proc' onclick="call_save()">Export Json</button>
 	     </div>    
+	
+             <a class="boton-linkedin" href="https://www.linkedin.com/in/roger-figueroa-quintero/?locale=en_US">LinkedIn</a>
+            </div>
+            
+          </div>
+ 
             <br>
             <svg></svg>
 
@@ -630,28 +652,3 @@
            
         </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
