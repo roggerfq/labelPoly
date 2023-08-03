@@ -9,6 +9,10 @@
            <script src="FileSaver.js"></script> 
 
           <style>
+
+
+
+
 		  
 		h1 {
 		  text-align: center;
@@ -37,7 +41,10 @@
 
 
 		svg {
-		  border: solid 1px rgba(221, 61, 16, 0.71);
+		  /*border: solid 1px rgba(221, 61, 16, 0.71);*/
+		  border: solid 1px rgba(0, 0, 0, 1);
+		  background-color: #000000;
+		  
 		}
 
 		.rectangle {
@@ -109,6 +116,10 @@
 
 	    .contenedor {
 	      white-space: nowrap;
+
+              /* over svg*/      
+	      position: relative;
+              z-index: 9999;
 	    }
 
 	    .barra {
@@ -137,6 +148,10 @@
 	    }
 
 
+           body {
+              margin: 0;
+              background: linear-gradient(to right, #f3f3f3, #f3f3f3, #ffffff);
+           }
 		  
           </style>
 		 
@@ -144,12 +159,17 @@
         </head>
         <body>
 
+
+
+  
+   <!-- Coloca aquí tus elementos HTML -->
+  
          <div class="contenedor">
 	    <div class="barra">
 	      
 	             
              <div class="btn-group">
-                 <input type='file' accept='image/*' onchange='openFile(event)'>
+                 <input type='file' accept='image/*' onchange='openFile(event)' id="load_file">
 		  <button id='poly'>draw polygon</button>
 		  <label for="poly_name" style="padding-left: 15px;">Polygon name</label>
                  <input type="text" id="poly_name" name="fname">
@@ -162,9 +182,10 @@
           </div>
  
             <br>
-            <svg></svg>
-
-            
+            <div id="svgContainer">
+            <svg id ="my-svg"></svg>
+            </div>
+               
 
       
 
@@ -181,6 +202,7 @@
                  var G_DICT = {};
                  var STR_IMG = null;
                  var G_NAME_IMG ="template";
+                 var G_DRAWING_ACTIVE = false;
                  
                            
                     
@@ -207,16 +229,21 @@
                  
                   
 		  d3.select('#poly').on('click', function() {
+		    console.log('inicio poligono');
+		    G_DRAWING_ACTIVE = true;
 		    new Polygon();
 		  });
 
 
                  //w y h default
-		  var w = 800, h = 600;
+		  //var w = 800, h = 600;
+		  var w = 640, h = 480;
 		  //css("background-image", "url("+dataURL+")");  
 		  var svgCanvas = d3.select('body').select('svg')
 		                     .attr("width", w)
-		                     .attr("height", h);
+		                     .attr("height", h)
+		                     .style('display', 'block')
+                                    .style('margin', '0 auto');
 
 
                   function showImage(dataURL){
@@ -448,6 +475,9 @@
 		      //NOTA: importante para seleccionar y deseleccionar
 		      gPoly.on("click", mouseClick);
                       
+                      
+                     console.log('finnn poligono');
+                     G_DRAWING_ACTIVE = false;
 
 		    }
 
@@ -646,7 +676,116 @@
 		      saveAs(fileToSave, fileName);
 		     
                }
+               
+               
+               
+              
+               
+    window.addEventListener('storage', function(event) {
+      if (event.key === 'showAlert' && event.newValue === 'true') {
+        alert('¡Hola mundo!');
+        localStorage.removeItem('showAlert');
+      }
+    });
                  
+                 
+                 
+                 // Agrega un event listener para detectar clics dentro del iframe
+document.addEventListener('click', function(event) {
+  if (event.button === 0) {
+    // Envía un mensaje a la página principal indicando el clic izquierdo
+    parent.postMessage('clicIzquierdo', '*');
+  }
+});
+
+               
+               
+               
+               
+               //__________________________________________________________
+               
+               
+              
+      
+         var svgContainer = document.getElementById("svgContainer");
+      var svg = svgContainer.querySelector("svg");
+
+      var isDragging = false;
+      var startX;
+      var startY;
+      var translateX = 0;
+      var translateY = 0;
+      var scale = 1;
+
+      svgContainer.addEventListener("mousedown", startDrag);
+      svgContainer.addEventListener("mousemove", drag);
+      svgContainer.addEventListener("mouseup", endDrag);
+      svgContainer.addEventListener("mouseleave", endDrag);
+      svgContainer.addEventListener("wheel", zoom);
+
+      function startDrag(event) {
+        isDragging = true;
+        startX = event.clientX;
+        startY = event.clientY;
+      }
+
+      function drag(event) {
+        if (!isDragging) return;
+
+        var deltaX = event.clientX - startX;
+        var deltaY = event.clientY - startY;
+
+        translateX += deltaX;
+        translateY += deltaY;
+
+        svg.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+
+        startX = event.clientX;
+        startY = event.clientY;
+      }
+
+      function endDrag() {
+        isDragging = false;
+      }
+
+      function zoom(event) {
+        event.preventDefault();
+
+        var zoomAmount = event.deltaY > 0 ? 0.9 : 1.1;
+
+        scale *= zoomAmount;
+
+        svg.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+      }
+
+/*
+canvas.addEventListener("mousemove", function(event) {
+  if (event.button === 0 && isMouseDown && G_DRAWING_ACTIVE == false) {    
+    // Obtén el elemento SVG
+
+      if (isDragging) {
+        console.log('draging');
+        var x = event.clientX - offsetX;
+        var y = event.clientY - offsetY;
+        canvas.style.left = x + 'px';
+        canvas.style.top = y + 'px';
+      }
+    
+    console.log('evento raton');
+  }
+});
+
+*/
+
+
+
+
+
+               
+               
+               
+               //___________________________________________________________  
+
             
             </script>
            
