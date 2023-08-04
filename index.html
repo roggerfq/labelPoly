@@ -735,8 +735,8 @@ document.addEventListener('click', function(event) {
         var deltaX = event.clientX - startX;
         var deltaY = event.clientY - startY;
 
-        translateX += deltaX;
-        translateY += deltaY;
+        translateX += deltaX/scale;
+        translateY += deltaY/scale;
 
         svg.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
 
